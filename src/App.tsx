@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginScreen from "./auth/LoginScreen";
 import OJTHead from "./features/OJTHead";
 import OJTCoordinator from "./features/OJTCoordinator";
@@ -11,7 +11,7 @@ function App() {
 	return (
 		<BrowserRouter>
 			<Routes>
-				<Route path="/" element={<NotFound />} />
+				<Route path="/" element={<Navigate to="/ojt-head/login" replace />} />
 				<Route path="/:path/login" element={<LoginScreen />} />
 				<Route
 					path="/ojt-head"
