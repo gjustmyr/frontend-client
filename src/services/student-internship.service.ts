@@ -25,6 +25,9 @@ export interface StudentInternship {
 	supervisor_id: number | null;
 	raw_grade: number | null;
 	status: string;
+	appraisal_report_url?: string | null;
+	appraisal_submitted_at?: string | null;
+	supervisor_marked_done_at?: string | null;
 	createdAt: string;
 	updatedAt: string;
 	semestral_internship_listing?: {
