@@ -45,7 +45,7 @@ function LoginScreen() {
 			password: string;
 			role: string;
 		}) => {
-			const res = await fetch("http://ec2-47-128-242-59.ap-southeast-1.compute.amazonaws.com:3000/api/auth/login", {
+			const res = await fetch("http://localhost:3000/api/auth/login", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -190,6 +190,18 @@ function LoginScreen() {
 								Contact Us
 							</a>
 						</div>
+
+						{path === "alumni" && (
+							<div className="text-sm text-center text-gray-600 poppins-regular">
+								Don't have an account yet?{" "}
+								<button
+									type="button"
+									onClick={() => navigate("/alumni/register")}
+									className="text-green-600 hover:underline">
+									Register here
+								</button>
+							</div>
+						)}
 					</form>
 				</div>
 			</div>

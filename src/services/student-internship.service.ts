@@ -1,4 +1,4 @@
-const API_BASE = "http://ec2-47-128-242-59.ap-southeast-1.compute.amazonaws.com:3000/api/student-internships";
+const API_BASE = "http://localhost:3000/api/student-internships";
 
 const request = async (url: string, options: RequestInit = {}) => {
 	const headers: any = {
@@ -67,4 +67,6 @@ export const getMyStudentInternship = async (): Promise<StudentInternship | null
 	const data = await request(`${API_BASE}/my-internship`);
 	return data.data || null;
 };
+
+
 

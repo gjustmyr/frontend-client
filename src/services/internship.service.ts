@@ -1,4 +1,4 @@
-const API_BASE = "http://ec2-47-128-242-59.ap-southeast-1.compute.amazonaws.com:3000/api/internships";
+const API_BASE = "http://localhost:3000/api/internships";
 
 const request = async (url: string, options: RequestInit = {}) => {
 	const headers: any = {
@@ -105,5 +105,39 @@ export const toggleInternshipStatus = async (internshipId: number) => {
 		method: "PATCH",
 	});
 	return data.data;
+};
+
+export interface InternshipRecommendation {
+	internship_id: number;
+	title: string;
+	description: string | null;
+	status: string;
+	is_hiring: boolean;
+	approval_status: string;
+	updatedAt: string;
+	employer: {
+		employer_id: number;
+		company_name: string;
+		industry_id: number | null;
+		industry: {
+			industry_id: number;
+			industry_name: string;
+		} | null;
+	} | null;
+	skills: { skill_id: number; skill_name: string }[];
+	matched_skills: string[];
+	recommendation_score: number;
+	is_recommended: boolean;
+}
+
+export const getRecommendedInternships = async (params?: { search?: string }) => {
+	const query = new URLSearchParams();
+	if (params?.search) {
+		query.append("search", params.search);
+	}
+
+	const url = `${API_BASE}/recommendations${query.toString() ? `?${query.toString()}` : ""}`;
+	const data = await request(url);
+	return (data.data || []) as InternshipRecommendation[];
 };
 

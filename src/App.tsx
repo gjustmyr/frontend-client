@@ -1,9 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginScreen from "./auth/LoginScreen";
+import AlumniRegister from "./auth/AlumniRegister";
 import OJTHead from "./features/OJTHead";
 import OJTCoordinator from "./features/OJTCoordinator";
 import CompanyRepresentative from "./features/CompanyRepresentative";
 import StudentTrainee from "./features/StudentTrainee";
+import Alumni from "./features/Alumni";
+import JobPlacement from "./features/JobPlacement";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./components/NotFound";
 
@@ -13,6 +16,7 @@ function App() {
 			<Routes>
 				<Route path="/" element={<Navigate to="/ojt-head/login" replace />} />
 				<Route path="/:path/login" element={<LoginScreen />} />
+			<Route path="/alumni/register" element={<AlumniRegister />} />
 				<Route
 					path="/ojt-head"
 					element={
@@ -38,10 +42,26 @@ function App() {
 				}
 			/>
 			<Route
+				path="/job-placement"
+				element={
+					<ProtectedRoute requiredRole="job-placement-head">
+						<JobPlacement />
+					</ProtectedRoute>
+				}
+			/>
+			<Route
 				path="/student-trainee"
 				element={
 					<ProtectedRoute requiredRole="student-trainee">
 						<StudentTrainee />
+					</ProtectedRoute>
+				}
+			/>
+			<Route
+				path="/alumni"
+				element={
+					<ProtectedRoute requiredRole="alumni">
+						<Alumni />
 					</ProtectedRoute>
 				}
 			/>

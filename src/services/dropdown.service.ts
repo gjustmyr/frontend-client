@@ -1,7 +1,7 @@
 export const getEnabledDepartments = async () => {
 	try {
 		const response = await fetch(
-			"http://ec2-47-128-242-59.ap-southeast-1.compute.amazonaws.com:3000/api/dropdowns/departments"
+			"http://localhost:3000/api/dropdowns/departments"
 		);
 		if (!response.ok) throw new Error("Failed to fetch departments");
 		return await response.json();
@@ -14,7 +14,7 @@ export const getEnabledDepartments = async () => {
 export const getIndustries = async () => {
 	try {
 		const response = await fetch(
-			"http://ec2-47-128-242-59.ap-southeast-1.compute.amazonaws.com:3000/api/dropdowns/industries"
+			"http://localhost:3000/api/dropdowns/industries"
 		);
 		if (!response.ok) throw new Error("Failed to fetch industries");
 		return await response.json();
@@ -27,7 +27,7 @@ export const getIndustries = async () => {
 export const getOJTCoordinators = async () => {
 	try {
 		const response = await fetch(
-			"http://ec2-47-128-242-59.ap-southeast-1.compute.amazonaws.com:3000/api/dropdowns/ojt-coordinators"
+			"http://localhost:3000/api/dropdowns/ojt-coordinators"
 		);
 		if (!response.ok) throw new Error("Failed to fetch ojt coordinators");
 		return await response.json();
@@ -39,7 +39,7 @@ export const getOJTCoordinators = async () => {
 
 export const getPrograms = async () => {
 	try {
-		const response = await fetch("http://ec2-47-128-242-59.ap-southeast-1.compute.amazonaws.com:3000/api/dropdowns/programs");
+		const response = await fetch("http://localhost:3000/api/dropdowns/programs");
 		if (!response.ok) throw new Error("Failed to fetch programs");
 		return await response.json();
 	} catch (error) {
@@ -50,7 +50,7 @@ export const getPrograms = async () => {
 
 export const getLocations = async () => {
 	try {
-		const response = await fetch("http://ec2-47-128-242-59.ap-southeast-1.compute.amazonaws.com:3000/api/dropdowns/locations");
+		const response = await fetch("http://localhost:3000/api/dropdowns/locations");
 		if (!response.ok) throw new Error("Failed to fetch locations");
 		return await response.json();
 	} catch (error) {

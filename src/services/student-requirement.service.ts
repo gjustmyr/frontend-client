@@ -1,4 +1,4 @@
-const API_BASE = "http://ec2-47-128-242-59.ap-southeast-1.compute.amazonaws.com:3000/api/student-requirements";
+const API_BASE = "http://localhost:3000/api/student-requirements";
 
 const request = async (url: string, options: RequestInit = {}) => {
 	const headers: any = {

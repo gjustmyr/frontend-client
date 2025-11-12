@@ -244,10 +244,10 @@ const RequirementsTab = () => {
 				<div className="max-w-md mx-auto">
 					<FiAlertCircle size={48} className="mx-auto text-blue-400 mb-4" />
 					<h3 className="text-lg poppins-semibold text-gray-800 mb-2">
-						No Internship Found
+						No OJT Ongoing Yet
 					</h3>
 					<p className="text-gray-600 poppins-regular">
-						You don't have an active internship yet. Please contact your coordinator for more information.
+						Your OJT assignment is still being prepared. Once an internship is approved for you, the requirements checklist will appear here.
 					</p>
 				</div>
 			</div>

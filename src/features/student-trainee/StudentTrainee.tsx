@@ -3,20 +3,18 @@ import HeaderLayout from "../layouts/HeaderLayout";
 import UserBar from "../components/UserBar";
 
 import { BsFileText } from "react-icons/bs";
-import { FiMessageSquare, FiDownloadCloud, FiClock, FiBarChart2, FiUser } from "react-icons/fi";
+import { FiMessageSquare, FiDownloadCloud, FiClock } from "react-icons/fi";
 import { MdWork } from "react-icons/md";
 
-import RequirementsTab from "./student-trainee/tabs/RequirementsTab";
-import RequirementTemplatesTab from "./student-trainee/tabs/RequirementTemplatesTab";
-import MessagesTab from "./messages/components/MessagesTab";
-import JobRecommendationsTab from "./student-trainee/tabs/JobRecommendationsTab";
-import OEAMSTab from "./student-trainee/tabs/OEAMSTab";
-import OJTStatusTab from "./student-trainee/tabs/OJTStatusTab";
-import ProfileTab from "./student-trainee/tabs/ProfileTab";
-import { getMyStudentInternship, type StudentInternship } from "../services/student-internship.service";
+import RequirementsTab from "./tabs/RequirementsTab";
+import RequirementTemplatesTab from "./tabs/RequirementTemplatesTab";
+import MessagesTab from "../messages/components/MessagesTab";
+import JobRecommendationsTab from "./tabs/JobRecommendationsTab";
+import OEAMSTab from "./tabs/OEAMSTab";
+import { getMyStudentInternship, type StudentInternship } from "../../services/student-internship.service";
 
 const StudentTrainee = () => {
-	const [activeTab, setActiveTab] = useState("profile");
+	const [activeTab, setActiveTab] = useState("requirements");
 	const [studentInternship, setStudentInternship] = useState<StudentInternship | null>(null);
 	const [loading, setLoading] = useState(true);
 
@@ -39,19 +37,9 @@ const StudentTrainee = () => {
 
 	const tabs = [
 		{
-			id: "profile",
-			label: "Profile",
-			icon: <FiUser size={20} />,
-		},
-		{
 			id: "requirements",
 			label: "OJT Requirements",
 			icon: <BsFileText size={20} />,
-		},
-		{
-			id: "ojt-status",
-			label: "OJT Status",
-			icon: <FiBarChart2 size={20} />,
 		},
 		...(showOEAMSTab
 			? [
@@ -106,9 +94,7 @@ const StudentTrainee = () => {
 
 				{/* Tab Content */}
 				<div className="p-6 bg-white min-h-[400px]">
-					{activeTab === "profile" && <ProfileTab />}
 					{activeTab === "requirements" && <RequirementsTab />}
-					{activeTab === "ojt-status" && <OJTStatusTab />}
 					{activeTab === "oeams" && showOEAMSTab && <OEAMSTab />}
 					{activeTab === "templates" && <RequirementTemplatesTab />}
 					{activeTab === "job-matches" && <JobRecommendationsTab />}

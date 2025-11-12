@@ -8,12 +8,26 @@ import {
 	toggleInternshipStatus,
 } from "../../../services/internship.service";
 import { getSkills, createOrGetSkill } from "../../../services/skill.service";
+import {
+	getJobRequirements,
+	saveJobRequirements,
+} from "../../../services/job-requirement.service";
+import {
+	getJobApplicationsForEmployer,
+	updateJobApplicationStatus,
+} from "../../../services/job-application.service";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "../../../components/DataTable";
 import QuillEditor from "../../../components/QuillEditor";
 import Modal from "../../../components/Modal";
 import { FiEye, FiEdit2, FiLock, FiUnlock, FiTrash2 } from "react-icons/fi";
 import { MdBusiness } from "react-icons/md";
+
+type OpportunityMode = "internship" | "job";
+
+interface PostOpportunityTabProps {
+	mode?: OpportunityMode;
+}
 
 interface Skill {
 	skill_id: number;
@@ -43,7 +57,51 @@ interface Internship {
 	};
 }
 
-const PostInternshipTab = () => {
+interface JobRequirementRecord {
+	job_requirement_id?: number;
+	title: string;
+	description?: string;
+	is_required: boolean;
+	order: number;
+}
+
+interface JobApplicationRecord {
+	job_application_id: number;
+	status: string;
+	createdAt: string;
+	Alumni?: {
+		alumni_id: number;
+		first_name: string;
+		middle_name?: string;
+		last_name: string;
+		User?: {
+			email: string;
+			status: string;
+		};
+	};
+	AlumniRequirementSubmissions?: Array<{
+		alumni_requirement_submission_id: number;
+		job_requirement_id: number;
+		status: "submitted" | "approved" | "rejected";
+		document_url: string;
+		remarks?: string;
+	}>;
+}
+
+const PostOpportunityTab = ({ mode = "internship" }: PostOpportunityTabProps) => {
+	const isJob = mode === "job";
+	const entityLabel = isJob ? "Job Opening" : "Internship";
+	const entityLabelPlural = isJob ? "Job Openings" : "Internships";
+	const approvalActor = isJob ? "Job Placement Head" : "OJT Head";
+	const jobApplicationStatuses: Array<{ value: string; label: string }> = [
+		{ value: "applied", label: "Applied" },
+		{ value: "under_review", label: "Under Review" },
+		{ value: "requirements_pending", label: "Requirements Pending" },
+		{ value: "interview", label: "Interview" },
+		{ value: "hired", label: "Hired" },
+		{ value: "rejected", label: "Rejected" },
+	];
+
 	const [internships, setInternships] = useState<Internship[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [showModal, setShowModal] = useState(false);
@@ -59,20 +117,30 @@ const PostInternshipTab = () => {
 	const [formData, setFormData] = useState({
 		title: "",
 		description: "",
-		is_hiring: false,
+		is_hiring: isJob,
 	});
+	const [showRequirementsModal, setShowRequirementsModal] = useState(false);
+	const [requirements, setRequirements] = useState<JobRequirementRecord[]>([]);
+	const [requirementsLoading, setRequirementsLoading] = useState(false);
+	const [showApplicationsModal, setShowApplicationsModal] = useState(false);
+	const [applications, setApplications] = useState<JobApplicationRecord[]>([]);
+	const [applicationsLoading, setApplicationsLoading] = useState(false);
 
 	const fetchInternships = async () => {
 		setLoading(true);
 		try {
 			const data = await getMyInternships();
-			setInternships(data);
+			const typedData = (data || []) as Internship[];
+			const filtered = typedData.filter((item) =>
+				isJob ? item.is_hiring : !item.is_hiring
+			);
+			setInternships(filtered);
 		} catch (err) {
 			console.error(err);
 			Swal.fire({
 				icon: "error",
 				title: "Error",
-				text: "Failed to load internships",
+				text: `Failed to load ${entityLabelPlural.toLowerCase()}`,
 			});
 		} finally {
 			setLoading(false);
@@ -91,10 +159,137 @@ const PostInternshipTab = () => {
 		}
 	};
 
+	const openRequirementsModal = async (internship: Internship) => {
+		setSelectedInternship(internship);
+		setRequirements([]);
+		setRequirementsLoading(true);
+		setShowRequirementsModal(true);
+		try {
+			const data = await getJobRequirements(internship.internship_id);
+			setRequirements(
+				(data.requirements || []).map((req: any, index: number) => ({
+					job_requirement_id: req.job_requirement_id,
+					title: req.title,
+					description: req.description || "",
+					is_required: req.is_required,
+					order: req.order ?? index,
+				}))
+			);
+		} catch (error: any) {
+			console.error(error);
+			Swal.fire({
+				icon: "error",
+				title: "Error",
+				text: error.message || "Failed to load job requirements",
+			});
+			setShowRequirementsModal(false);
+		} finally {
+			setRequirementsLoading(false);
+		}
+	};
+
+	const handleRequirementFieldChange = (
+		index: number,
+		field: keyof JobRequirementRecord,
+		value: any
+	) => {
+		setRequirements((prev) => {
+			const next = [...prev];
+			next[index] = { ...next[index], [field]: value };
+			return next;
+		});
+	};
+
+	const addRequirementRow = () => {
+		setRequirements((prev) => [
+			...prev,
+			{
+				title: "",
+				description: "",
+				is_required: true,
+				order: prev.length,
+			},
+		]);
+	};
+
+	const removeRequirementRow = (index: number) => {
+		setRequirements((prev) => prev.filter((_, idx) => idx !== index));
+	};
+
+	const saveRequirements = async () => {
+		if (!selectedInternship) return;
+		try {
+			await saveJobRequirements(selectedInternship.internship_id, requirements);
+			Swal.fire({
+				icon: "success",
+				title: "Saved",
+				text: "Job requirements updated successfully.",
+				timer: 2000,
+				showConfirmButton: false,
+			});
+			setShowRequirementsModal(false);
+		} catch (error: any) {
+			console.error(error);
+			Swal.fire({
+				icon: "error",
+				title: "Error",
+				text: error.message || "Failed to save job requirements",
+			});
+		}
+	};
+
+	const openApplicationsModal = async (internship: Internship) => {
+		setSelectedInternship(internship);
+		setApplications([]);
+		setApplicationsLoading(true);
+		setShowApplicationsModal(true);
+		try {
+			const data = await getJobApplicationsForEmployer(internship.internship_id);
+			setApplications(data || []);
+		} catch (error: any) {
+			console.error(error);
+			Swal.fire({
+				icon: "error",
+				title: "Error",
+				text: error.message || "Failed to load job applications",
+			});
+			setShowApplicationsModal(false);
+		} finally {
+			setApplicationsLoading(false);
+		}
+	};
+
+	const handleApplicationStatusChange = async (
+		applicationId: number,
+		status: string
+	) => {
+		try {
+			await updateJobApplicationStatus(applicationId, status);
+			Swal.fire({
+				icon: "success",
+				title: "Updated",
+				text: "Application status updated.",
+				timer: 1800,
+				showConfirmButton: false,
+			});
+			if (selectedInternship) {
+				openApplicationsModal(selectedInternship);
+			}
+		} catch (error: any) {
+			console.error(error);
+			Swal.fire({
+				icon: "error",
+				title: "Error",
+				text: error.message || "Failed to update application status",
+			});
+		}
+	};
+
 	useEffect(() => {
 		fetchInternships();
 		fetchSkills();
-	}, []);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [mode]);
 
 	const handleAddSkill = async () => {
 		if (!newSkillName.trim()) {
@@ -186,17 +381,31 @@ const PostInternshipTab = () => {
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		try {
-			const payload = {
-				...formData,
-				skill_ids: selectedSkillIds,
+			const payload: {
+				title: string;
+				description: string;
+				is_hiring: boolean;
+				skill_ids?: number[];
+			} = {
+				title: formData.title,
+				description: formData.description,
+				is_hiring: isJob ? true : false,
 			};
+
+			if (!isJob && formData.is_hiring) {
+				payload.is_hiring = true;
+			}
+
+			if (selectedSkillIds.length > 0) {
+				payload.skill_ids = selectedSkillIds;
+			}
 
 			if (editingId) {
 				await updateInternship(editingId, payload);
 				Swal.fire({
 					icon: "success",
 					title: "Success",
-					text: "Internship updated successfully. It is pending OJT Head approval.",
+					text: `${entityLabel} updated successfully. It is pending ${approvalActor} approval.`,
 					timer: 3000,
 					showConfirmButton: false,
 				});
@@ -205,7 +414,7 @@ const PostInternshipTab = () => {
 				Swal.fire({
 					icon: "success",
 					title: "Success",
-					text: "Internship posted successfully. It is pending OJT Head approval.",
+					text: `${entityLabel} posted successfully. It is pending ${approvalActor} approval.`,
 					timer: 3000,
 					showConfirmButton: false,
 				});
@@ -226,7 +435,7 @@ const PostInternshipTab = () => {
 		setFormData({
 			title: internship.title,
 			description: internship.description,
-			is_hiring: internship.is_hiring,
+			is_hiring: isJob ? true : internship.is_hiring,
 		});
 		// Set selected skills from internship
 		const skillIds =
@@ -253,7 +462,7 @@ const PostInternshipTab = () => {
 				Swal.fire({
 					icon: "success",
 					title: "Deleted!",
-					text: "Internship has been deleted.",
+					text: `${entityLabel} has been deleted.`,
 					timer: 2000,
 					showConfirmButton: false,
 				});
@@ -263,7 +472,7 @@ const PostInternshipTab = () => {
 				Swal.fire({
 					icon: "error",
 					title: "Error",
-					text: err.message || "Failed to delete internship",
+					text: err.message || `Failed to delete ${entityLabel.toLowerCase()}`,
 				});
 			}
 		}
@@ -275,7 +484,9 @@ const PostInternshipTab = () => {
 			Swal.fire({
 				icon: "success",
 				title: "Success",
-				text: `Internship ${currentStatus === "enabled" ? "closed" : "opened"} successfully`,
+				text: `${entityLabel} ${
+					currentStatus === "enabled" ? "closed" : "opened"
+				} successfully`,
 				timer: 2000,
 				showConfirmButton: false,
 			});
@@ -285,13 +496,13 @@ const PostInternshipTab = () => {
 			Swal.fire({
 				icon: "error",
 				title: "Error",
-				text: err.message || "Failed to update internship status",
+				text: err.message || `Failed to update ${entityLabel.toLowerCase()} status`,
 			});
 		}
 	};
 
 	const handleCancel = () => {
-		setFormData({ title: "", description: "", is_hiring: false });
+		setFormData({ title: "", description: "", is_hiring: isJob });
 		setSelectedSkillIds([]);
 		setNewSkillName("");
 		setShowAutocomplete(false);
@@ -325,7 +536,7 @@ const PostInternshipTab = () => {
 	const columns: ColumnDef<Internship>[] = [
 		{
 			accessorKey: "title",
-			header: "Title",
+			header: `${entityLabel} Title`,
 		},
 		{
 			accessorKey: "description",
@@ -374,27 +585,31 @@ const PostInternshipTab = () => {
 			header: "Approval Status",
 			cell: ({ row }) => getApprovalStatusBadge(row.original.approval_status),
 		},
-		{
-			accessorKey: "is_hiring",
-			header: "Hiring Status",
-			cell: ({ row }) => {
-				return (
-					<div className="text-center">
-						<span
-							className={`px-3 py-1 rounded-full text-xs poppins-semibold ${
-								row.original.is_hiring
-									? "bg-green-100 text-green-700"
-									: "bg-gray-100 text-gray-700"
-							}`}>
-							{row.original.is_hiring ? "Hiring" : "Not Hiring"}
-						</span>
-					</div>
-				);
-			},
-		},
+		...(!isJob
+			? [
+					{
+						accessorKey: "is_hiring",
+						header: "Listed for Alumni",
+						cell: ({ row }: { row: any }) => {
+							return (
+								<div className="text-center">
+									<span
+										className={`px-3 py-1 rounded-full text-xs poppins-semibold ${
+											row.original.is_hiring
+												? "bg-green-100 text-green-700"
+												: "bg-gray-100 text-gray-700"
+										}`}>
+										{row.original.is_hiring ? "Yes" : "No"}
+									</span>
+								</div>
+							);
+						},
+					} as ColumnDef<Internship>,
+			  ]
+			: []),
 		{
 			accessorKey: "status",
-			header: "Status",
+			header: "Publication Status",
 			cell: ({ row }) => {
 				const status = row.original.status;
 				const displayStatus = status === "enabled" ? "Published" : "Archived";
@@ -426,6 +641,22 @@ const PostInternshipTab = () => {
 				const internship = row.original;
 				return (
 					<div className="flex items-center gap-2">
+						{isJob && (
+							<>
+								<button
+									onClick={() => openRequirementsModal(internship)}
+									className="p-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors"
+									title="Manage Requirements">
+									Req
+								</button>
+								<button
+									onClick={() => openApplicationsModal(internship)}
+									className="p-2 bg-sky-500 text-white rounded hover:bg-sky-600 transition-colors"
+									title="View Applications">
+									Apps
+								</button>
+							</>
+						)}
 						<button
 							onClick={() => handleViewDetails(internship)}
 							className="p-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
@@ -445,7 +676,7 @@ const PostInternshipTab = () => {
 									? "bg-orange-500 hover:bg-orange-600"
 									: "bg-green-500 hover:bg-green-600"
 							}`}
-							title={internship.status === "enabled" ? "Close" : "Open"}>
+							title={internship.status === "enabled" ? "Archive" : "Publish"}>
 							{internship.status === "enabled" ? <FiLock size={18} /> : <FiUnlock size={18} />}
 						</button>
 						<button
@@ -463,11 +694,11 @@ const PostInternshipTab = () => {
 	return (
 		<div>
 			<div className="flex justify-between items-center mb-4">
-				<h2 className="text-xl poppins-semibold">Post Internship</h2>
+				<h2 className="text-xl poppins-semibold">{`Post ${entityLabel}`}</h2>
 				<button
 					onClick={() => setShowModal(true)}
 					className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 poppins-medium">
-					Post New Internship
+					{`Post New ${entityLabel}`}
 				</button>
 			</div>
 
@@ -475,7 +706,7 @@ const PostInternshipTab = () => {
 			{showModal && (
 				<Modal onClose={handleCancel} size="lg">
 					<h3 className="text-lg poppins-semibold mb-4">
-						{editingId ? "Edit Internship Posting" : "New Internship Posting"}
+						{editingId ? `Edit ${entityLabel} Posting` : `New ${entityLabel} Posting`}
 					</h3>
 					<form onSubmit={handleSubmit} className="space-y-4">
 						<div>
@@ -603,18 +834,27 @@ const PostInternshipTab = () => {
 							)}
 						</div>
 
-						<div>
-							<label className="flex items-center gap-2 poppins-regular">
-								<input
-									type="checkbox"
-									checked={formData.is_hiring}
-									onChange={(e) =>
-										setFormData({ ...formData, is_hiring: e.target.checked })
-									}
-								/>
-								<span className="text-sm">Currently Hiring</span>
-							</label>
-						</div>
+						{!isJob ? (
+							<div>
+								<label className="flex items-center gap-2 poppins-regular">
+									<input
+										type="checkbox"
+										checked={formData.is_hiring}
+										onChange={(e) =>
+											setFormData({ ...formData, is_hiring: e.target.checked })
+										}
+									/>
+									<span className="text-sm">
+										Also list as a job opening for alumni
+									</span>
+								</label>
+							</div>
+						) : (
+							<p className="text-sm text-gray-600 poppins-regular">
+								Job openings are automatically tagged as hiring opportunities for
+								alumni applicants.
+							</p>
+						)}
 
 						<div className="flex justify-end gap-2 pt-4 border-t">
 							<button
@@ -626,17 +866,17 @@ const PostInternshipTab = () => {
 							<button
 								type="submit"
 								className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 poppins-medium">
-								{editingId ? "Update Internship" : "Post Internship"}
+								{editingId ? `Update ${entityLabel}` : `Post ${entityLabel}`}
 							</button>
 						</div>
 					</form>
 				</Modal>
 			)}
 
-			<h3 className="text-lg poppins-semibold mb-4">My Internship Postings</h3>
+			<h3 className="text-lg poppins-semibold mb-4">{`My ${entityLabel} Postings`}</h3>
 			<DataTable columns={columns} data={internships} loading={loading} />
 
-			{/* Internship Details Modal */}
+			{/* Opportunity Details Modal */}
 			{showDetailsModal && selectedInternship && (
 				<Modal onClose={() => setShowDetailsModal(false)} size="xl">
 					<div className="space-y-6">
@@ -653,14 +893,20 @@ const PostInternshipTab = () => {
 									}`}>
 									{selectedInternship.status === "enabled" ? "Published" : "Archived"}
 								</span>
-								<span
-									className={`px-3 py-1 rounded-full text-xs poppins-semibold ${
-										selectedInternship.is_hiring
-											? "bg-blue-100 text-blue-700"
-											: "bg-gray-100 text-gray-700"
-									}`}>
-									{selectedInternship.is_hiring ? "Currently Hiring" : "Not Hiring"}
-								</span>
+								{isJob ? (
+									<span className="px-3 py-1 rounded-full text-xs poppins-semibold bg-blue-100 text-blue-700">
+										Job Opening
+									</span>
+								) : (
+									<span
+										className={`px-3 py-1 rounded-full text-xs poppins-semibold ${
+											selectedInternship.is_hiring
+												? "bg-blue-100 text-blue-700"
+												: "bg-gray-100 text-gray-700"
+										}`}>
+										{selectedInternship.is_hiring ? "Listed for Alumni" : "OJT Only"}
+									</span>
+								)}
 							</div>
 						</div>
 
@@ -751,8 +997,192 @@ const PostInternshipTab = () => {
 					</div>
 				</Modal>
 			)}
+
+			{isJob && showRequirementsModal && selectedInternship && (
+				<Modal onClose={() => setShowRequirementsModal(false)} size="lg">
+					<h3 className="text-xl poppins-semibold text-gray-800 mb-4">
+						Manage Requirements – {selectedInternship.title}
+					</h3>
+					{requirementsLoading ? (
+						<div className="flex justify-center items-center py-10">
+							<p className="text-gray-500 poppins-regular">Loading requirements…</p>
+						</div>
+					) : (
+						<div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+							{requirements.length === 0 && (
+								<p className="text-sm text-gray-500 poppins-regular">
+									No requirements defined yet. Add one below.
+								</p>
+							)}
+							{requirements.map((req, index) => (
+								<div
+									key={req.job_requirement_id ?? `new-${index}`}
+									className="border border-gray-200 rounded-lg p-4 space-y-3">
+									<div>
+										<label className="block text-sm poppins-medium text-gray-600 mb-1">
+											Requirement Title
+										</label>
+										<input
+											value={req.title}
+											onChange={(e) =>
+												handleRequirementFieldChange(index, "title", e.target.value)
+											}
+											className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+											required
+										/>
+									</div>
+									<div>
+										<label className="block text-sm poppins-medium text-gray-600 mb-1">
+											Description (optional)
+										</label>
+										<input
+											value={req.description || ""}
+											onChange={(e) =>
+												handleRequirementFieldChange(index, "description", e.target.value)
+											}
+											className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+										/>
+									</div>
+									<div className="flex items-center justify-between">
+										<label className="inline-flex items-center gap-2 text-sm text-gray-600">
+											<input
+												type="checkbox"
+												checked={req.is_required}
+												onChange={(e) =>
+													handleRequirementFieldChange(
+														index,
+														"is_required",
+														e.target.checked
+													)
+												}
+											/>
+											Required submission
+										</label>
+										<button
+											type="button"
+											onClick={() => removeRequirementRow(index)}
+											className="text-sm text-red-500 hover:underline">
+											Remove
+										</button>
+									</div>
+								</div>
+							))}
+
+							<button
+								type="button"
+								onClick={addRequirementRow}
+								className="px-4 py-2 bg-green-500 text-white rounded poppins-medium hover:bg-green-600">
+								Add Requirement
+							</button>
+						</div>
+					)}
+
+					<div className="flex justify-end gap-2 mt-4">
+						<button
+							type="button"
+							onClick={() => setShowRequirementsModal(false)}
+							className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 poppins-medium">
+							Cancel
+						</button>
+						<button
+							type="button"
+							onClick={saveRequirements}
+							className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 poppins-medium">
+							Save Requirements
+						</button>
+					</div>
+				</Modal>
+			)}
+
+			{isJob && showApplicationsModal && selectedInternship && (
+				<Modal onClose={() => setShowApplicationsModal(false)} size="xl">
+					<h3 className="text-xl poppins-semibold text-gray-800 mb-4">
+						Applications – {selectedInternship.title}
+					</h3>
+					{applicationsLoading ? (
+						<div className="flex justify-center items-center py-10">
+							<p className="text-gray-500 poppins-regular">Loading applications…</p>
+						</div>
+					) : applications.length === 0 ? (
+						<div className="text-center py-8 text-gray-500 poppins-regular">
+							No applications submitted yet.
+						</div>
+					) : (
+						<div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+							{applications.map((application) => (
+								<div
+									key={application.job_application_id}
+									className="border border-gray-200 rounded-lg p-4 space-y-3">
+									<div className="flex items-center justify-between">
+										<div>
+											<p className="poppins-semibold text-gray-800">
+												{application.Alumni
+													? `${application.Alumni.first_name}${
+															application.Alumni.middle_name
+																? ` ${application.Alumni.middle_name}`
+																: ""
+														} ${application.Alumni.last_name}`
+													: "Unknown applicant"}
+											</p>
+											<p className="text-xs text-gray-500">
+												{application.Alumni?.User?.email || "No email"}
+											</p>
+										</div>
+										<select
+											value={application.status}
+											onChange={(e) =>
+												handleApplicationStatusChange(
+													application.job_application_id,
+													e.target.value
+												)
+											}
+											className="px-3 py-2 border border-gray-300 rounded poppins-regular text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+											{jobApplicationStatuses.map((option) => (
+												<option key={option.value} value={option.value}>
+													{option.label}
+												</option>
+											))}
+										</select>
+									</div>
+									<p className="text-xs text-gray-400">
+										Applied on {new Date(application.createdAt).toLocaleDateString()}
+									</p>
+
+									{application.AlumniRequirementSubmissions &&
+										application.AlumniRequirementSubmissions.length > 0 && (
+											<div className="bg-gray-50 border border-gray-200 rounded p-3 space-y-2">
+												<p className="text-sm poppins-medium text-gray-700">
+													Submitted Requirements
+												</p>
+												{application.AlumniRequirementSubmissions.map((submission) => (
+													<div
+														key={submission.alumni_requirement_submission_id}
+														className="flex items-center justify-between text-sm">
+														<a
+															href={submission.document_url}
+															target="_blank"
+															rel="noopener noreferrer"
+															className="text-blue-600 hover:underline">
+															View document
+														</a>
+														<span className="text-xs text-gray-500 uppercase">
+															{submission.status}
+														</span>
+													</div>
+												))}
+											</div>
+										)}
+								</div>
+							))}
+						</div>
+					)}
+				</Modal>
+			)}
 		</div>
 	);
 };
+
+const PostInternshipTab = () => <PostOpportunityTab mode="internship" />;
+export const PostJobOpeningTab = () => <PostOpportunityTab mode="job" />;
 
 export default PostInternshipTab;

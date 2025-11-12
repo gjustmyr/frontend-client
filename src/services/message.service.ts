@@ -1,6 +1,6 @@
 import { io, Socket } from "socket.io-client";
 
-const API_BASE = "http://ec2-47-128-242-59.ap-southeast-1.compute.amazonaws.com:3000/api/messages";
+const API_BASE = "http://localhost:3000/api/messages";
 
 const request = async (url: string, options: RequestInit = {}) => {
 	const headers: any = {
@@ -93,7 +93,7 @@ export const connectSocket = (): Socket => {
 		throw new Error("No authentication token found");
 	}
 
-	socket = io("http://ec2-47-128-242-59.ap-southeast-1.compute.amazonaws.com:3000", {
+	socket = io("http://localhost:3000", {
 		auth: {
 			token: token,
 		},

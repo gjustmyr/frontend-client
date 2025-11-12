@@ -38,9 +38,14 @@ const ApplicationsTab = () => {
 	const fetchInternships = async () => {
 		try {
 			const data = await getMyInternships();
-			setInternships(data);
-			if (data.length > 0 && !selectedInternship) {
-				setSelectedInternship(data[0].internship_id);
+			const internshipsOnly = (data || []).filter((item: any) => !item.is_hiring);
+			setInternships(internshipsOnly);
+			if (internshipsOnly.length > 0) {
+				if (!selectedInternship || !internshipsOnly.some((item) => item.internship_id === selectedInternship)) {
+					setSelectedInternship(internshipsOnly[0].internship_id);
+				}
+			} else {
+				setSelectedInternship(null);
 			}
 		} catch (err) {
 			console.error(err);
