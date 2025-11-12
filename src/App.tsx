@@ -5,12 +5,13 @@ import OJTCoordinator from "./features/OJTCoordinator";
 import CompanyRepresentative from "./features/CompanyRepresentative";
 import StudentTrainee from "./features/StudentTrainee";
 import ProtectedRoute from "./components/ProtectedRoute";
+import NotFound from "./components/NotFound";
 
 function App() {
 	return (
 		<BrowserRouter>
 			<Routes>
-				<Route path="/" element={<div>Test</div>} />
+				<Route path="/" element={<NotFound />} />
 				<Route path="/:path/login" element={<LoginScreen />} />
 				<Route
 					path="/ojt-head"
@@ -44,6 +45,8 @@ function App() {
 					</ProtectedRoute>
 				}
 			/>
+			{/* 404 Not Found - Catch all unmatched routes */}
+			<Route path="*" element={<NotFound />} />
 		</Routes>
 	</BrowserRouter>
 );
