@@ -1,0 +1,64 @@
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+
+interface QuillEditorProps {
+	value: string;
+	onChange: (value: string) => void;
+	placeholder?: string;
+	className?: string;
+}
+
+const QuillEditor = ({ value, onChange, placeholder = "Write something...", className = "" }: QuillEditorProps) => {
+
+	const modules = {
+		toolbar: [
+			[{ header: [1, 2, 3, 4, 5, 6, false] }],
+			[{ font: [] }],
+			[{ size: [] }],
+			["bold", "italic", "underline", "strike", "blockquote"],
+			[{ list: "ordered" }, { list: "bullet" }, { indent: "-1" }, { indent: "+1" }],
+			["link", "image", "video"],
+			[{ color: [] }, { background: [] }],
+			[{ align: [] }],
+			["clean"],
+		],
+	};
+
+	const formats = [
+		"header",
+		"font",
+		"size",
+		"bold",
+		"italic",
+		"underline",
+		"strike",
+		"blockquote",
+		"list",
+		"bullet",
+		"indent",
+		"link",
+		"image",
+		"video",
+		"color",
+		"background",
+		"align",
+	];
+
+	return (
+		<div className={className}>
+			<ReactQuill
+				theme="snow"
+				value={value}
+				onChange={onChange}
+				modules={modules}
+				formats={formats}
+				placeholder={placeholder}
+				className="bg-white"
+				style={{ minHeight: "200px" }}
+			/>
+		</div>
+	);
+};
+
+export default QuillEditor;
+
